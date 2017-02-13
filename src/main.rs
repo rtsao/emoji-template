@@ -16,7 +16,7 @@ enum Node<'a> {
 
 named!(thing<Node>, alt!(
     not_token =>      { |contents|          Node::Literal { contents: contents} }
-  | interpolation =>  { |(a, b, c)|         Node::Interpolation { identifier: b } }
+  | interpolation =>  { |identifier|         Node::Interpolation { identifier: identifier } }
   | conditional =>    {  |(a, b, c, d, e)|  Node::Conditional { identifier: b, children: d }  }
 ));
 
@@ -27,8 +27,7 @@ named!(interp_token, tag!("🔤"));
 
 named!(not_token, is_not!("🔤🖋✒️👍"));
 
-named!(interpolation<&[u8], (&[u8], &[u8], &[u8])>, tuple!(
-  interp_token, alpha, interp_token));
+named!(interpolation, delimited!(interp_token, alpha, interp_token));
 
 named!(conditional<&[u8], (&[u8], &[u8], &[u8], Vec<Node>, &[u8])>, tuple!(
   bool_positive_token, alpha, pen_start_token, multi, pen_end_token));
@@ -43,7 +42,7 @@ fn main() {
     r,
     IResult::Done(
       "h".as_bytes(),
-      ("🔤".as_bytes(), "defgh".as_bytes(), "🔤".as_bytes())
+      "defgh".as_bytes()
     )
   );
 
@@ -93,5 +92,7 @@ fn main() {
     )}
   );
   assert_eq!(r4, IResult::Done("".as_bytes(), e4));
-
 }
+
+
+
