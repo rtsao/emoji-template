@@ -17,7 +17,7 @@ enum Node<'a> {
 named!(thing<Node>, alt!(
     not_token =>      { |contents|          Node::Literal { contents: contents} }
   | interpolation =>  { |identifier|         Node::Interpolation { identifier: identifier } }
-  | conditional =>    {  |(a, b, c, d, e)|  Node::Conditional { identifier: b, children: d }  }
+  | conditional =>    {  |(a, b, d)|  Node::Conditional { identifier: b, children: d }  }
 ));
 
 named!(bool_positive_token, tag!("👍"));
@@ -29,9 +29,10 @@ named!(not_token, is_not!("🔤🖋✒️👍"));
 
 named!(interpolation, delimited!(interp_token, alpha, interp_token));
 
-named!(conditional<&[u8], (&[u8], &[u8], &[u8], Vec<Node>, &[u8])>, tuple!(
-  bool_positive_token, alpha, pen_start_token, multi, pen_end_token));
+named!(pen<&[u8], Vec<Node> >, delimited!(pen_start_token, multi, pen_end_token));
 
+named!(conditional<&[u8], (&[u8], &[u8], Vec<Node>)>, tuple!(
+  bool_positive_token, alpha, pen));
 
 named!(multi<&[u8], Vec<Node> >, many0!( thing ) );
 
@@ -64,9 +65,7 @@ fn main() {
   let e5 = (
     "👍".as_bytes(),
     "foo".as_bytes(),
-    "✒️".as_bytes(),
-    vec!(),
-    "🖋".as_bytes()
+    vec!()
   );
   assert_eq!(r5, IResult::Done("".as_bytes(), e5));
 
@@ -75,9 +74,7 @@ fn main() {
   let e3 = (
     "👍".as_bytes(),
     "foo".as_bytes(),
-    "✒️".as_bytes(),
-    vec!(Node::Literal { contents: "hello world".as_bytes()}),
-    "🖋".as_bytes()
+    vec!(Node::Literal { contents: "hello world".as_bytes()})
   );
   assert_eq!(r3, IResult::Done("".as_bytes(), e3));
 
