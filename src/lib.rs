@@ -15,7 +15,7 @@ pub enum Node<'a> {
     },
 }
 
-named!(thing<Node>, alt!(
+named!(block<Node>, alt!(
     not_token =>
         { |contents| Literal { contents: contents} }
   | interpolation =>
@@ -38,7 +38,7 @@ named!(pen<&[u8], Vec<Node> >, delimited!(pen_start_token, multi, pen_end_token)
 named!(conditional<&[u8], (&[u8], &[u8], Vec<Node>)>, tuple!(
   bool_positive_token, alpha, pen));
 
-named!(multi<&[u8], Vec<Node> >, many0!( thing ) );
+named!(multi<&[u8], Vec<Node> >, many0!( block ) );
 
 pub fn parse(input: &[u8]) -> IResult<&[u8], Vec<Node>> {
     return multi(input);
@@ -57,49 +57,54 @@ fn interpolation_works() {
 }
 
 #[test]
-fn thing_works() {
-    // one
-    let r1 = thing("wooot".as_bytes());
-    assert_eq!(r1, IResult::Done("".as_bytes(), Node::Literal { contents: "wooot".as_bytes()}));
+fn block_works() {
+    assert_eq!(
+        block("wooot".as_bytes()),
+        IResult::Done("".as_bytes(), Node::Literal { contents: "wooot".as_bytes()})
+    );
 }
 
 #[test]
 fn parse_works() {
-    // two
-    let r2 = parse("wooot🔤dang🔤oooo".as_bytes());
-    let e2 = vec!(
-        Literal { contents: "wooot".as_bytes()},
-        Interpolation { identifier: "dang".as_bytes()},
-        Literal { contents: "oooo".as_bytes()}
+    assert_eq!(
+        parse("wooot🔤dang🔤oooo".as_bytes()),
+        IResult::Done("".as_bytes(), vec!(
+            Literal { contents: "wooot".as_bytes()},
+            Interpolation { identifier: "dang".as_bytes()},
+            Literal { contents: "oooo".as_bytes()}
+        ))
     );
-    assert_eq!(r2, IResult::Done("".as_bytes(), e2));
 }
 
 #[test]
 fn conditional_works() {
-    // conditional
-    let r5 = conditional("👍foo✒️🖋".as_bytes());
-    let e5 = ("👍".as_bytes(), "foo".as_bytes(), vec![]);
-    assert_eq!(r5, IResult::Done("".as_bytes(), e5));
-
-    // conditional
-    let r3 = conditional("👍foo✒️hello world🖋".as_bytes());
-    let e3 =
-        ("👍".as_bytes(), "foo".as_bytes(), vec!(Literal { contents: "hello world".as_bytes()}));
-    assert_eq!(r3, IResult::Done("".as_bytes(), e3));
+    assert_eq!(
+        conditional("👍foo✒️🖋".as_bytes()),
+        IResult::Done("".as_bytes(), ("👍".as_bytes(), "foo".as_bytes(), vec![]))
+    );
+    assert_eq!(
+        conditional("👍foo✒️hello world🖋".as_bytes()),
+        IResult::Done("".as_bytes(),
+            (
+                "👍".as_bytes(),
+                "foo".as_bytes(),
+                vec!(Literal { contents: "hello world".as_bytes()})
+            )
+        )
+    );
 }
 
 #[test]
 fn nested_works() {
-    // multi-nested
-    let r4 = multi("blahblah👍foo✒️hello 🔤name🔤!🖋".as_bytes());
-    let e4 = vec!(
-        Literal {contents: "blahblah".as_bytes()},
-        Conditional { identifier: "foo".as_bytes(), children: vec!(
-            Literal { contents: "hello ".as_bytes()},
-            Interpolation { identifier: "name".as_bytes()},
-            Literal { contents: "!".as_bytes()}
-        )}
+    assert_eq!(
+        multi("blahblah👍foo✒️hello 🔤name🔤!🖋".as_bytes()),
+        IResult::Done("".as_bytes(), vec!(
+            Literal {contents: "blahblah".as_bytes()},
+            Conditional { identifier: "foo".as_bytes(), children: vec!(
+                Literal { contents: "hello ".as_bytes()},
+                Interpolation { identifier: "name".as_bytes()},
+                Literal { contents: "!".as_bytes()}
+            )}
+        ))
     );
-    assert_eq!(r4, IResult::Done("".as_bytes(), e4));
 }
